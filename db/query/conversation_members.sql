@@ -22,6 +22,12 @@ SET last_read_message_id = $3,
 WHERE conversation_id = $1 
   AND user_id = $2;
 
+-- name: CountUnreadMessages :one
+SELECT COUNT(*) 
+FROM messages 
+WHERE conversation_id = $1 AND id > $2 AND sender_id != $3
+LIMIT 100;
+
 -- name: RemoveConversationMember :exec
 DELETE FROM conversation_members
 WHERE conversation_id = $1 
@@ -55,8 +61,3 @@ INSERT INTO conversation_members (
 SELECT COUNT(*) 
 FROM conversation_members 
 WHERE conversation_id = $1;
-
--- name: CountUnreadMessages :one
-SELECT COUNT(*) 
-FROM messages 
-WHERE conversation_id = $1 AND id > $2;

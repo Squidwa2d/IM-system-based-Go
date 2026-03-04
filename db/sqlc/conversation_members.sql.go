@@ -93,16 +93,18 @@ func (q *Queries) CountConversationMembers(ctx context.Context, conversationID i
 const countUnreadMessages = `-- name: CountUnreadMessages :one
 SELECT COUNT(*) 
 FROM messages 
-WHERE conversation_id = $1 AND id > $2
+WHERE conversation_id = $1 AND id > $2 AND sender_id != $3
+LIMIT 100
 `
 
 type CountUnreadMessagesParams struct {
 	ConversationID int64
 	ID             int64
+	SenderID       int64
 }
 
 func (q *Queries) CountUnreadMessages(ctx context.Context, arg CountUnreadMessagesParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countUnreadMessages, arg.ConversationID, arg.ID)
+	row := q.db.QueryRow(ctx, countUnreadMessages, arg.ConversationID, arg.ID, arg.SenderID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

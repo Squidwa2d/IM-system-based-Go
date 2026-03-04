@@ -10,6 +10,7 @@ import (
 )
 
 type Store interface {
+	CreateGroupTx(ctx context.Context, arg *CreateGroupTxParams) (CreateGroupTxResult, error)
 	Querier
 }
 
@@ -78,4 +79,9 @@ func (store *SQLStore) CreateGroupTx(ctx context.Context, arg *CreateGroupTxPara
 		return err
 	})
 	return result, err
+}
+
+type UpdateUnreadCountParams struct {
+	ConversationID int64 `json:"conversation_id"`
+	SenderIDID     int64 `json:"sender_id"`
 }

@@ -4,8 +4,9 @@ import (
 	"log"
 
 	"context"
-	db "github.com/Squidwa2d/chat-room/db"
-	"github.com/Squidwa2d/chat-room/utils"
+	api "github.com/Squidwa2d/IM-system-based-Go/api"
+	db "github.com/Squidwa2d/IM-system-based-Go/db/sqlc"
+	util "github.com/Squidwa2d/IM-system-based-Go/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -23,6 +24,12 @@ func main() {
 	}
 	store := db.NewStore(pool)
 	defer pool.Close()
-
+	server, err := api.NewServer(config, store)
+	if err != nil {
+		log.Fatal("无法创建服务器:", err)
+	}
 	// 启动服务器
+	if err := server.Start(config.ServerAddress); err != nil {
+		log.Fatal("无法启动服务器:", err)
+	}
 }

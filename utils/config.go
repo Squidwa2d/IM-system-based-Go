@@ -5,7 +5,9 @@ import (
 )
 
 type Config struct {
-	DBSource string `mapstructure:"DB_SOURCE"`
+	DBSource          string `mapstructure:"DB_SOURCE"`
+	TokenSymmetricKey string `mapstructure:"TOKEN_SYMMETRIC_KEY"`
+	ServerAddress     string `mapstructure:"SERVER_ADDRESS"`
 }
 
 // LoadConfig reads configuration from .env file

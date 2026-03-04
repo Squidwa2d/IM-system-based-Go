@@ -3,11 +3,11 @@ package db
 import (
 	"context"
 	"fmt"
-	"os"
+	"log"
 	"testing"
 	"time"
 
-	"github.com/Squidwa2d/chat-room/utils"
+	util "github.com/Squidwa2d/IM-system-based-Go/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -24,12 +24,10 @@ type StoreTestSuite struct {
 
 // SetupSuite 在所有测试开始前运行一次
 func (s *StoreTestSuite) SetupSuite() {
-	// 从环境变量获取数据库连接字符串
-	// 例如: export PGX_TEST_DATABASE="postgres://user:pass@localhost:5432/mydb?sslmode=disable"
 
 	var err error
 	s.ctx, s.cancel = context.WithTimeout(context.Background(), 30*time.Second)
-	config, err := util.LoadConfig(".")
+	config, err := util.LoadConfig("../../.")
 	if err != nil {
 		log.Fatal("无法加载配置:", err)
 	}
