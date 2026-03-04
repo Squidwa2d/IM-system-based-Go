@@ -1,4 +1,4 @@
-module github.com/Squidwa2d/chat-room
+module github.com/Squidwa2d/IM-system-based-Go
 
 go 1.25.1
 
