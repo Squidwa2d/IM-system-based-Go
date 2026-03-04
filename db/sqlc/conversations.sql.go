@@ -22,7 +22,7 @@ INSERT INTO conversations (
 `
 
 type CreateConversationParams struct {
-	Type    interface{}
+	Type    int16
 	Name    pgtype.Text
 	OwnerID pgtype.Int8
 }

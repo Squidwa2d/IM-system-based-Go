@@ -23,7 +23,7 @@ INSERT INTO messages (
 type CreateMessageParams struct {
 	ConversationID int64
 	SenderID       int64
-	MsgType        interface{}
+	MsgType        int16
 	Content        string
 }
 

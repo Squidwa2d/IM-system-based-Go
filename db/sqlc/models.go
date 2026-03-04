@@ -11,7 +11,7 @@ import (
 type Conversation struct {
 	ID int64
 	// 1: private, 2: group
-	Type      interface{}
+	Type      int16
 	Name      pgtype.Text
 	AvatarUrl pgtype.Text
 	OwnerID   pgtype.Int8
@@ -24,7 +24,7 @@ type ConversationMember struct {
 	ConversationID int64
 	UserID         int64
 	// 1:owner, 2:admin, 3:member. 私聊也默认为 3，避免 NULL
-	Role     interface{}
+	Role     int16
 	JoinedAt pgtype.Timestamp
 	// 0 表示未读任何消息
 	LastReadMessageID pgtype.Int8
@@ -36,7 +36,7 @@ type Message struct {
 	ConversationID int64
 	SenderID       int64
 	// 1:text, 2:image, 3:file, 4:voice
-	MsgType   interface{}
+	MsgType   int16
 	Content   string
 	CreatedAt pgtype.Timestamp
 	IsDeleted pgtype.Bool

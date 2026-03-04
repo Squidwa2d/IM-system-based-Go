@@ -9,9 +9,10 @@ import (
 )
 
 type Querier interface {
-	BatchCreateMembers(ctx context.Context, arg BatchCreateMembersParams) error
+	BatchCreateMembers(ctx context.Context, arg BatchCreateMembersParams) ([]ConversationMember, error)
 	CheckMemberExists(ctx context.Context, arg CheckMemberExistsParams) (bool, error)
 	CountConversationMembers(ctx context.Context, conversationID int64) (int64, error)
+	CountUnreadMessages(ctx context.Context, arg CountUnreadMessagesParams) (int64, error)
 	CreateConversation(ctx context.Context, arg CreateConversationParams) (Conversation, error)
 	CreateConversationMember(ctx context.Context, arg CreateConversationMemberParams) (ConversationMember, error)
 	CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error)

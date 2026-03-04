@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const batchCreateMembers = `-- name: BatchCreateMembers :exec
+const batchCreateMembers = `-- name: BatchCreateMembers :many
 INSERT INTO conversation_members (
     conversation_id,
     user_id,
@@ -21,18 +21,41 @@ INSERT INTO conversation_members (
     $1,                   -- conversation_id
     unnest($2::bigint[]), -- user_ids
     $3                    -- roles
-)
+) RETURNING id, conversation_id, user_id, role, joined_at, last_read_message_id, last_active_at
 `
 
 type BatchCreateMembersParams struct {
 	ConversationID int64
 	Column2        []int64
-	Role           interface{}
+	Role           int16
 }
 
-func (q *Queries) BatchCreateMembers(ctx context.Context, arg BatchCreateMembersParams) error {
-	_, err := q.db.Exec(ctx, batchCreateMembers, arg.ConversationID, arg.Column2, arg.Role)
-	return err
+func (q *Queries) BatchCreateMembers(ctx context.Context, arg BatchCreateMembersParams) ([]ConversationMember, error) {
+	rows, err := q.db.Query(ctx, batchCreateMembers, arg.ConversationID, arg.Column2, arg.Role)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ConversationMember{}
+	for rows.Next() {
+		var i ConversationMember
+		if err := rows.Scan(
+			&i.ID,
+			&i.ConversationID,
+			&i.UserID,
+			&i.Role,
+			&i.JoinedAt,
+			&i.LastReadMessageID,
+			&i.LastActiveAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const checkMemberExists = `-- name: CheckMemberExists :one
@@ -67,6 +90,24 @@ func (q *Queries) CountConversationMembers(ctx context.Context, conversationID i
 	return count, err
 }
 
+const countUnreadMessages = `-- name: CountUnreadMessages :one
+SELECT COUNT(*) 
+FROM messages 
+WHERE conversation_id = $1 AND id > $2
+`
+
+type CountUnreadMessagesParams struct {
+	ConversationID int64
+	ID             int64
+}
+
+func (q *Queries) CountUnreadMessages(ctx context.Context, arg CountUnreadMessagesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnreadMessages, arg.ConversationID, arg.ID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createConversationMember = `-- name: CreateConversationMember :one
 INSERT INTO conversation_members (
     conversation_id,
@@ -80,7 +121,7 @@ INSERT INTO conversation_members (
 type CreateConversationMemberParams struct {
 	ConversationID int64
 	UserID         int64
-	Role           interface{}
+	Role           int16
 }
 
 func (q *Queries) CreateConversationMember(ctx context.Context, arg CreateConversationMemberParams) (ConversationMember, error) {
@@ -182,7 +223,7 @@ WHERE conversation_id = $1
 type UpdateMemberRoleParams struct {
 	ConversationID int64
 	UserID         int64
-	Role           interface{}
+	Role           int16
 }
 
 func (q *Queries) UpdateMemberRole(ctx context.Context, arg UpdateMemberRoleParams) error {

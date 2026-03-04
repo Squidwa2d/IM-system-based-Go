@@ -39,7 +39,7 @@ SELECT EXISTS (
     WHERE conversation_id = $1 AND user_id = $2
 ) as is_member;
 
--- name: BatchCreateMembers :exec
+-- name: BatchCreateMembers :many
 INSERT INTO conversation_members (
     conversation_id,
     user_id,
@@ -49,9 +49,14 @@ INSERT INTO conversation_members (
     $1,                   -- conversation_id
     unnest($2::bigint[]), -- user_ids
     $3                    -- roles
-);
+) RETURNING *;
 
 -- name: CountConversationMembers :one
 SELECT COUNT(*) 
 FROM conversation_members 
 WHERE conversation_id = $1;
+
+-- name: CountUnreadMessages :one
+SELECT COUNT(*) 
+FROM messages 
+WHERE conversation_id = $1 AND id > $2;
