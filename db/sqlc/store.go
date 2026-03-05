@@ -77,9 +77,6 @@ func (store *SQLStore) CreateGroupTx(ctx context.Context, arg *CreateGroupTxPara
 		if err != nil {
 			return err
 		}
-		if err != nil {
-			return err
-		}
 		result.CM, err = q.BatchCreateMembers(ctx, BatchCreateMembersParams{
 			ConversationID: group.ID,
 			Column2:        arg.UserIDs,
