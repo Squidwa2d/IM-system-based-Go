@@ -30,8 +30,12 @@ type Querier interface {
 	ListMyConversations(ctx context.Context, userID int64) ([]Conversation, error)
 	RecallMessage(ctx context.Context, arg RecallMessageParams) (Message, error)
 	RemoveConversationMember(ctx context.Context, arg RemoveConversationMemberParams) error
+	UpdataStatus(ctx context.Context, arg UpdataStatusParams) (User, error)
+	UpdateAvatar(ctx context.Context, arg UpdateAvatarParams) (User, error)
 	UpdateMemberRole(ctx context.Context, arg UpdateMemberRoleParams) error
+	UpdatePasswd(ctx context.Context, arg UpdatePasswdParams) (User, error)
 	UpdateReadStatus(ctx context.Context, arg UpdateReadStatusParams) error
+	UpdateUsername(ctx context.Context, arg UpdateUsernameParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)

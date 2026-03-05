@@ -2,12 +2,15 @@ package util
 
 import (
 	"github.com/spf13/viper"
+	"time"
 )
 
 type Config struct {
-	DBSource          string `mapstructure:"DB_SOURCE"`
-	TokenSymmetricKey string `mapstructure:"TOKEN_SYMMETRIC_KEY"`
-	ServerAddress     string `mapstructure:"SERVER_ADDRESS"`
+	DBSource             string        `mapstructure:"DB_SOURCE"`
+	TokenSymmetricKey    string        `mapstructure:"TOKEN_SYMMETRIC_KEY"`
+	ServerAddress        string        `mapstructure:"SERVER_ADDRESS"`
+	AccessTokenDuration  time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
+	RefreshTokenDuration time.Duration `mapstructure:"REFRESH_TOKEN_DURATION"`
 }
 
 // LoadConfig reads configuration from .env file

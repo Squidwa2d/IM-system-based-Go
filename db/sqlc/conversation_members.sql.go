@@ -15,23 +15,31 @@ const batchCreateMembers = `-- name: BatchCreateMembers :many
 INSERT INTO conversation_members (
     conversation_id,
     user_id,
-    role
+    role,
+    last_read_message_id
 ) VALUES (
     -- 使用 sqlc 的 slice 参数
     $1,                   -- conversation_id
     unnest($2::bigint[]), -- user_ids
-    $3                    -- roles
+    $3,                   -- roles
+    $4                    -- last_read_message_id
 ) RETURNING id, conversation_id, user_id, role, joined_at, last_read_message_id, last_active_at
 `
 
 type BatchCreateMembersParams struct {
-	ConversationID int64
-	Column2        []int64
-	Role           int16
+	ConversationID    int64
+	Column2           []int64
+	Role              int16
+	LastReadMessageID pgtype.Int8
 }
 
 func (q *Queries) BatchCreateMembers(ctx context.Context, arg BatchCreateMembersParams) ([]ConversationMember, error) {
-	rows, err := q.db.Query(ctx, batchCreateMembers, arg.ConversationID, arg.Column2, arg.Role)
+	rows, err := q.db.Query(ctx, batchCreateMembers,
+		arg.ConversationID,
+		arg.Column2,
+		arg.Role,
+		arg.LastReadMessageID,
+	)
 	if err != nil {
 		return nil, err
 	}

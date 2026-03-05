@@ -9,6 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type Response struct {
+	Code    int         `json:"code"`    // 业务状态码（非 HTTP 状态码）
+	Message string      `json:"message"` // 提示信息
+	Data    interface{} `json:"data"`    // 业务数据（成功时返回，失败时为 null）
+}
+
 type Server struct {
 	config     util.Config
 	store      db.Store
@@ -38,5 +44,22 @@ func (server *Server) Start(address string) error {
 }
 
 func (server *Server) setupRouter() {
+	v1 := server.router.Group("/api/v1")
+	v1.POST("/auth/login", server.login)
+	v1.POST("/auth/register", server.register)
+	v1.GET("auth/refresh", server.refreshToken)
 
+	authRoutes := v1.Use(AuthMiddleware(server.tokenMaker))
+	authRoutes.POST("/users/passwd", server.updatePassword)
+
+	authRoutes.POST("/conversations/createGroupe", server.createGroupeConversation)
+	authRoutes.POST("/conversations/listConversations", server.listConversations)
+}
+
+func errorResponse(code int, err error) Response {
+	return Response{
+		Code:    code,
+		Message: err.Error(),
+		Data:    nil,
+	}
 }

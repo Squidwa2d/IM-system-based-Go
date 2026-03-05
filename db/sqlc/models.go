@@ -15,8 +15,8 @@ type Conversation struct {
 	Name      pgtype.Text
 	AvatarUrl pgtype.Text
 	OwnerID   pgtype.Int8
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 }
 
 type ConversationMember struct {
@@ -25,10 +25,10 @@ type ConversationMember struct {
 	UserID         int64
 	// 1:owner, 2:admin, 3:member. 私聊也默认为 3，避免 NULL
 	Role     int16
-	JoinedAt pgtype.Timestamp
+	JoinedAt pgtype.Timestamptz
 	// 0 表示未读任何消息
 	LastReadMessageID pgtype.Int8
-	LastActiveAt      pgtype.Timestamp
+	LastActiveAt      pgtype.Timestamptz
 }
 
 type Message struct {
@@ -38,7 +38,7 @@ type Message struct {
 	// 1:text, 2:image, 3:file, 4:voice
 	MsgType   int16
 	Content   string
-	CreatedAt pgtype.Timestamp
+	CreatedAt pgtype.Timestamptz
 	IsDeleted pgtype.Bool
 }
 
@@ -48,7 +48,7 @@ type User struct {
 	PasswdHash string
 	AvatarUrl  pgtype.Text
 	// online, offline, busy
-	Status    pgtype.Text
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	Status    string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 }

@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -65,6 +67,114 @@ WHERE username = $1 LIMIT 1
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByUsername, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswdHash,
+		&i.AvatarUrl,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updataStatus = `-- name: UpdataStatus :one
+UPDATE users
+SET status = $2
+WHERE id = $1
+RETURNING id, username, passwd_hash, avatar_url, status, created_at, updated_at
+`
+
+type UpdataStatusParams struct {
+	ID     int64
+	Status string
+}
+
+func (q *Queries) UpdataStatus(ctx context.Context, arg UpdataStatusParams) (User, error) {
+	row := q.db.QueryRow(ctx, updataStatus, arg.ID, arg.Status)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswdHash,
+		&i.AvatarUrl,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateAvatar = `-- name: UpdateAvatar :one
+UPDATE users
+SET avatar_url = $2
+WHERE id = $1
+RETURNING id, username, passwd_hash, avatar_url, status, created_at, updated_at
+`
+
+type UpdateAvatarParams struct {
+	ID        int64
+	AvatarUrl pgtype.Text
+}
+
+func (q *Queries) UpdateAvatar(ctx context.Context, arg UpdateAvatarParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateAvatar, arg.ID, arg.AvatarUrl)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswdHash,
+		&i.AvatarUrl,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updatePasswd = `-- name: UpdatePasswd :one
+UPDATE users
+SET passwd_hash = $2
+WHERE id = $1
+RETURNING id, username, passwd_hash, avatar_url, status, created_at, updated_at
+`
+
+type UpdatePasswdParams struct {
+	ID         int64
+	PasswdHash string
+}
+
+func (q *Queries) UpdatePasswd(ctx context.Context, arg UpdatePasswdParams) (User, error) {
+	row := q.db.QueryRow(ctx, updatePasswd, arg.ID, arg.PasswdHash)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswdHash,
+		&i.AvatarUrl,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateUsername = `-- name: UpdateUsername :one
+UPDATE users
+SET username = $2
+WHERE id = $1
+RETURNING id, username, passwd_hash, avatar_url, status, created_at, updated_at
+`
+
+type UpdateUsernameParams struct {
+	ID       int64
+	Username string
+}
+
+func (q *Queries) UpdateUsername(ctx context.Context, arg UpdateUsernameParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUsername, arg.ID, arg.Username)
 	var i User
 	err := row.Scan(
 		&i.ID,

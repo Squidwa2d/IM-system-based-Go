@@ -3,9 +3,9 @@ CREATE TABLE "users" (
   "username" varchar(50) UNIQUE NOT NULL,
   "passwd_hash" varchar(255) NOT NULL,
   "avatar_url" varchar(255),
-  "status" varchar(20) DEFAULT 'online',
-  "created_at" timestamp DEFAULT (now()),
-  "updated_at" timestamp DEFAULT (now())
+  "status" varchar(20) NOT NULL DEFAULT 'online',
+  "created_at" timestamptz DEFAULT (now()),
+  "updated_at" timestamptz DEFAULT (now())
 );
 
 CREATE TABLE "conversations" (
@@ -14,8 +14,8 @@ CREATE TABLE "conversations" (
   "name" varchar(100),
   "avatar_url" varchar(255),
   "owner_id" bigint,
-  "created_at" timestamp DEFAULT (now()),
-  "updated_at" timestamp DEFAULT (now())
+  "created_at" timestamptz DEFAULT (now()),
+  "updated_at" timestamptz DEFAULT (now())
 );
 
 CREATE TABLE "messages" (
@@ -24,7 +24,7 @@ CREATE TABLE "messages" (
   "sender_id" bigint NOT NULL,
   "msg_type" smallint NOT NULL,
   "content" text NOT NULL,
-  "created_at" timestamp DEFAULT (now()),
+  "created_at" timestamptz DEFAULT (now()),
   "is_deleted" boolean DEFAULT false
 );
 
@@ -33,9 +33,9 @@ CREATE TABLE "conversation_members" (
   "conversation_id" bigint NOT NULL,
   "user_id" bigint NOT NULL,
   "role" smallint NOT NULL DEFAULT 3,
-  "joined_at" timestamp DEFAULT (now()),
-  "last_read_message_id" bigint DEFAULT 0,
-  "last_active_at" timestamp DEFAULT (now())
+  "joined_at" timestamptz DEFAULT (now()),
+  "last_read_message_id" bigint DEFAULT 1,
+  "last_active_at" timestamptz DEFAULT (now())
 );
 
 CREATE INDEX ON "conversations" ("owner_id");

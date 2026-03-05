@@ -68,6 +68,15 @@ func (store *SQLStore) CreateGroupTx(ctx context.Context, arg *CreateGroupTxPara
 				Valid: true,
 			},
 		})
+		message, err := q.CreateMessage(ctx, CreateMessageParams{
+			ConversationID: group.ID,
+			SenderID:       arg.OwnerID,
+			MsgType:        1,
+			Content:        "Group created",
+		})
+		if err != nil {
+			return err
+		}
 		if err != nil {
 			return err
 		}
@@ -75,6 +84,10 @@ func (store *SQLStore) CreateGroupTx(ctx context.Context, arg *CreateGroupTxPara
 			ConversationID: group.ID,
 			Column2:        arg.UserIDs,
 			Role:           3, // 3 for group member,2 for admin,1 for owner
+			LastReadMessageID: pgtype.Int8{
+				Int64: message.ID,
+				Valid: true,
+			},
 		})
 		return err
 	})
