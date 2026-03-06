@@ -122,20 +122,27 @@ const createConversationMember = `-- name: CreateConversationMember :one
 INSERT INTO conversation_members (
     conversation_id,
     user_id,
-    role
+    role,
+    last_read_message_id
 ) VALUES (
-    $1, $2, $3
+    $1, $2, $3, $4
 ) RETURNING id, conversation_id, user_id, role, joined_at, last_read_message_id, last_active_at
 `
 
 type CreateConversationMemberParams struct {
-	ConversationID int64
-	UserID         int64
-	Role           int16
+	ConversationID    int64
+	UserID            int64
+	Role              int16
+	LastReadMessageID pgtype.Int8
 }
 
 func (q *Queries) CreateConversationMember(ctx context.Context, arg CreateConversationMemberParams) (ConversationMember, error) {
-	row := q.db.QueryRow(ctx, createConversationMember, arg.ConversationID, arg.UserID, arg.Role)
+	row := q.db.QueryRow(ctx, createConversationMember,
+		arg.ConversationID,
+		arg.UserID,
+		arg.Role,
+		arg.LastReadMessageID,
+	)
 	var i ConversationMember
 	err := row.Scan(
 		&i.ID,

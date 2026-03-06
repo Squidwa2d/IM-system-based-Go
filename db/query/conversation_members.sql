@@ -2,9 +2,24 @@
 INSERT INTO conversation_members (
     conversation_id,
     user_id,
-    role
+    role,
+    last_read_message_id
 ) VALUES (
-    $1, $2, $3
+    $1, $2, $3, $4
+) RETURNING *;
+
+-- name: BatchCreateMembers :many
+INSERT INTO conversation_members (
+    conversation_id,
+    user_id,
+    role,
+    last_read_message_id
+) VALUES (
+    -- 使用 sqlc 的 slice 参数
+    $1,                   -- conversation_id
+    unnest($2::bigint[]), -- user_ids
+    $3,                   -- roles
+    $4                    -- last_read_message_id
 ) RETURNING *;
 
 -- name: GetConversationMember :one
@@ -45,19 +60,6 @@ SELECT EXISTS (
     WHERE conversation_id = $1 AND user_id = $2
 ) as is_member;
 
--- name: BatchCreateMembers :many
-INSERT INTO conversation_members (
-    conversation_id,
-    user_id,
-    role,
-    last_read_message_id
-) VALUES (
-    -- 使用 sqlc 的 slice 参数
-    $1,                   -- conversation_id
-    unnest($2::bigint[]), -- user_ids
-    $3,                   -- roles
-    $4                    -- last_read_message_id
-) RETURNING *;
 
 -- name: CountConversationMembers :one
 SELECT COUNT(*) 

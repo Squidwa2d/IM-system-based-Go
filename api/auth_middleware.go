@@ -22,41 +22,47 @@ const (
 // 优化后的鉴权中间件
 func AuthMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authorizationHeader := c.GetHeader(authorizationHeaderKey)
-		if authorizationHeader == "" {
-			// 封装错误响应：Code=401，Message=具体错误，Data=null
+		var accessToken string
+
+		// 1. 优先尝试从 Header 获取 (标准 HTTP 请求)
+		authHeader := c.GetHeader(authorizationHeaderKey)
+		if authHeader != "" {
+			// 如果是 Header，预期格式为 "Bearer <token>"
+			fields := strings.Fields(authHeader)
+			if len(fields) != 2 || strings.ToLower(fields[0]) != authorizationTypeBearer {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, Response{
+					Code:    http.StatusUnauthorized,
+					Message: "invalid authorization header format (expected: Bearer <token>)",
+					Data:    nil,
+				})
+				return
+			}
+			accessToken = fields[1]
+		} else {
+			// 2. 如果 Header 没有，尝试从 Query 参数获取 (WebSocket 握手)
+			tokenQuery := c.Query("token")
+			if tokenQuery == "" {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, Response{
+					Code:    http.StatusUnauthorized,
+					Message: "missing token (provide via 'Authorization' header or 'token' query param)",
+					Data:    nil,
+				})
+				return
+			}
+			// Query 参数通常不需要 "Bearer " 前缀，直接赋值
+			accessToken = tokenQuery
+		}
+
+		// 3. 校验 token 有效性
+		if accessToken == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, Response{
 				Code:    http.StatusUnauthorized,
-				Message: "authorization header is not provided",
+				Message: "token is empty",
 				Data:    nil,
 			})
 			return
 		}
 
-		// Bearer token 拆分
-		fields := strings.Fields(authorizationHeader)
-		if len(fields) < 2 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, Response{
-				Code:    http.StatusUnauthorized,
-				Message: "invalid authorization header format (expected: Bearer <token>)",
-				Data:    nil,
-			})
-			return
-		}
-
-		// 校验授权类型
-		authType := strings.ToLower(fields[0])
-		if authType != authorizationTypeBearer {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, Response{
-				Code:    http.StatusUnauthorized,
-				Message: fmt.Sprintf("unsupported authorization type %s (only Bearer is supported)", authType),
-				Data:    nil,
-			})
-			return
-		}
-
-		// 校验 token 有效性
-		accessToken := fields[1]
 		payload, err := tokenMaker.VerifyToken(accessToken)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, Response{
@@ -67,7 +73,6 @@ func AuthMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 			return
 		}
 
-		// 正常流程：将 payload 存入上下文，继续执行后续处理
 		c.Set(authorizationPayloadKey, payload)
 		c.Next()
 	}

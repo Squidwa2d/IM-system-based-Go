@@ -55,6 +55,7 @@ func (server *Server) listConversations(c *gin.Context) {
 /*
 createConversation Api
 */
+
 type createGroupeConversationRequest struct {
 	UserName  string   `json:"username" binding:"required"`
 	Target    []string `json:"target" binding:"required"`
@@ -75,6 +76,7 @@ func (server *Server) createGroupeConversation(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, errorResponse(http.StatusUnauthorized, err))
 		return
 	}
+
 	// check if the user exist
 	owner, err := server.store.GetUserByUsername(c, req.UserName)
 	if err != nil {
@@ -109,7 +111,65 @@ func (server *Server) createGroupeConversation(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, Response{
 		Code:    http.StatusOK,
-		Message: "Successfully create conversation",
+		Message: "Successfully create group conversation",
 		Data:    cm,
 	})
+}
+
+/*
+
+create private conversation Api
+
+*/
+
+type createPrivateConversationRequest struct {
+	UserName string `json:"username" binding:"required"`
+	Target   string `json:"target" binding:"required"`
+}
+
+func (server *Server) createPrivateConversation(c *gin.Context) {
+	authPayload := c.MustGet(authorizationPayloadKey).(*token.Payload)
+	var req createPrivateConversationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, errorResponse(http.StatusBadRequest, err))
+		return
+	}
+
+	// check if the user is the owner of the account
+	if authPayload.Username != req.UserName {
+		c.JSON(http.StatusUnauthorized, errorResponse(http.StatusUnauthorized, errors.New("account doesn't belong to the authenticated user")))
+		return
+	}
+
+	// check if the user exist
+	user, err := server.store.GetUserByUsername(c, req.UserName)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusBadRequest, errorResponse(http.StatusBadRequest, errors.New("user not found")))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+	}
+
+	//check if the target user exist
+	target, err := server.store.GetUserByUsername(c, req.Target)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusBadRequest, errorResponse(http.StatusBadRequest, errors.New("target user not found")))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+	}
+
+	cm, err := server.store.CreatePrivateTx(c, &db.CreatePrivateTxParams{UserId: user.ID, FriendId: target.ID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+		return
+	}
+	c.JSON(http.StatusOK, Response{
+		Code:    http.StatusOK,
+		Message: "Successfully create private conversation",
+		Data:    cm,
+	})
+
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	db "github.com/Squidwa2d/IM-system-based-Go/db/sqlc"
+
 	token "github.com/Squidwa2d/IM-system-based-Go/token"
 	"github.com/Squidwa2d/IM-system-based-Go/utils"
 	"github.com/gin-gonic/gin"
@@ -16,6 +17,7 @@ type Response struct {
 }
 
 type Server struct {
+	hub        *Hub
 	config     util.Config
 	store      db.Store
 	tokenMaker token.Maker
@@ -29,11 +31,13 @@ func NewServer(config util.Config, store db.Store) (*Server, error) {
 	}
 	r := gin.Default()
 
+	hub := NewHub()
 	server := &Server{
 		config:     config,
 		store:      store,
 		tokenMaker: tokenMaker,
 		router:     r,
+		hub:        hub,
 	}
 	server.setupRouter()
 	return server, nil
@@ -54,6 +58,9 @@ func (server *Server) setupRouter() {
 
 	authRoutes.POST("/conversations/createGroupe", server.createGroupeConversation)
 	authRoutes.POST("/conversations/listConversations", server.listConversations)
+	authRoutes.POST("/conversations/createPrivate", server.createPrivateConversation)
+
+	authRoutes.GET("/ws/connect", server.handleWebSocket)
 }
 
 func errorResponse(code int, err error) Response {
