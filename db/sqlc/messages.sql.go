@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createMessage = `-- name: CreateMessage :one
@@ -89,6 +91,60 @@ func (q *Queries) GetMessage(ctx context.Context, id int64) (Message, error) {
 	return i, err
 }
 
+const listHistoryMessages = `-- name: ListHistoryMessages :many
+SELECT 
+    id,
+    conversation_id,
+    sender_id,
+    msg_type,
+    content,
+    created_at,
+    is_deleted
+FROM messages
+WHERE 
+    conversation_id = $1 
+    AND is_deleted = FALSE
+    -- 关键逻辑：如果提供了 cursor_id，只查比它小的 ID
+    -- sqlc.narg 允许参数为 NULL，实现可选过滤
+    AND ($3::bigint IS NULL OR id < $3::bigint)
+ORDER BY id DESC  -- 必须按 ID 倒序（或时间倒序），保证一致性
+LIMIT $2
+`
+
+type ListHistoryMessagesParams struct {
+	ConversationID int64
+	Limit          int32
+	CursorID       pgtype.Int8
+}
+
+func (q *Queries) ListHistoryMessages(ctx context.Context, arg ListHistoryMessagesParams) ([]Message, error) {
+	rows, err := q.db.Query(ctx, listHistoryMessages, arg.ConversationID, arg.Limit, arg.CursorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Message{}
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.ConversationID,
+			&i.SenderID,
+			&i.MsgType,
+			&i.Content,
+			&i.CreatedAt,
+			&i.IsDeleted,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMessages = `-- name: ListMessages :many
 SELECT id, conversation_id, sender_id, msg_type, content, created_at, is_deleted FROM messages
 WHERE conversation_id = $1 
@@ -133,6 +189,7 @@ func (q *Queries) ListMessages(ctx context.Context, arg ListMessagesParams) ([]M
 }
 
 const listMessagesBySender = `-- name: ListMessagesBySender :many
+
 SELECT id, conversation_id, sender_id, msg_type, content, created_at, is_deleted FROM messages
 WHERE conversation_id = $1 and sender_id = $2 and is_deleted = false
 ORDER BY created_at DESC
@@ -147,6 +204,7 @@ type ListMessagesBySenderParams struct {
 	Offset         int32
 }
 
+// 只需要 Limit，不需要 Offset
 func (q *Queries) ListMessagesBySender(ctx context.Context, arg ListMessagesBySenderParams) ([]Message, error) {
 	rows, err := q.db.Query(ctx, listMessagesBySender,
 		arg.ConversationID,

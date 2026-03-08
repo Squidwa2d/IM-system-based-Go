@@ -22,10 +22,13 @@ type Querier interface {
 	GetConversationForUpdate(ctx context.Context, id int64) (Conversation, error)
 	GetConversationMember(ctx context.Context, arg GetConversationMemberParams) (ConversationMember, error)
 	GetMessage(ctx context.Context, id int64) (Message, error)
+	GetUserAllConversations(ctx context.Context, userID int64) ([]int64, error)
 	GetUserById(ctx context.Context, id int64) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	ListConversationMembers(ctx context.Context, conversationID int64) ([]ConversationMember, error)
+	ListHistoryMessages(ctx context.Context, arg ListHistoryMessagesParams) ([]Message, error)
 	ListMessages(ctx context.Context, arg ListMessagesParams) ([]Message, error)
+	// 只需要 Limit，不需要 Offset
 	ListMessagesBySender(ctx context.Context, arg ListMessagesBySenderParams) ([]Message, error)
 	ListMyConversations(ctx context.Context, userID int64) ([]Conversation, error)
 	RecallMessage(ctx context.Context, arg RecallMessageParams) (Message, error)

@@ -65,3 +65,7 @@ SELECT EXISTS (
 SELECT COUNT(*) 
 FROM conversation_members 
 WHERE conversation_id = $1;
+
+-- name: GetUserAllConversations :many
+SELECT conversation_id FROM conversation_members
+WHERE user_id = $1;

@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+
 	db "github.com/Squidwa2d/IM-system-based-Go/db/sqlc"
 	util "github.com/Squidwa2d/IM-system-based-Go/utils"
 
@@ -20,6 +22,7 @@ Login API
 type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 	Username string `json:"username" binding:"required"`
+	Device   string `json:"device"   binding:"required,device"`
 }
 
 type userResponse struct {
@@ -73,18 +76,30 @@ func (s *Server) login(c *gin.Context) {
 		return
 	}
 
+	//将token更新进入redis
+	ok, key := s.redis.CheckRrefreshToken(user.ID, req.Device)
+	//如果存在，则更新token
+	if ok {
+		s.redis.client.Del(s.redis.ctx, key)
+	}
+	key = fmt.Sprintf("%s%d%s", keyRefreshPrefix, user.ID, req.Device)
 	//生成token
-	accessToken, accessTokenPayload, err := s.tokenMaker.CreateToken(req.Username, s.config.AccessTokenDuration)
+	accessToken, accessTokenPayload, err := s.tokenMaker.CreateToken(req.Username, req.Device, s.config.AccessTokenDuration)
+	s.redis.client.Set(s.redis.ctx, key, accessToken, s.config.RefreshTokenDuration)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
 		return
 	}
-	refreshToken, refreshTokenPayload, err := s.tokenMaker.CreateToken(req.Username, s.config.RefreshTokenDuration)
+	refreshToken, refreshTokenPayload, err := s.tokenMaker.CreateToken(req.Username, req.Device, s.config.RefreshTokenDuration)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
 		return
 	}
-
+	accessToken, refreshToken, err = s.redis.CreateSession(accessToken, refreshToken, user.ID, req.Device, user.Username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+		return
+	}
 	//更新用户状态
 	if _, err := s.store.UpdataStatus(c, db.UpdataStatusParams{
 		ID:     user.ID,
@@ -100,6 +115,7 @@ func (s *Server) login(c *gin.Context) {
 		AccessTokenExpiresAt:  accessTokenPayload.ExpiredAt.Time,
 		User:                  newUserResponse(user),
 	}
+
 	c.JSON(http.StatusOK, Response{
 		Code:    http.StatusOK,
 		Message: "Succsessfully logged in",
@@ -202,14 +218,31 @@ func (s *Server) refreshToken(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, errorResponse(http.StatusUnauthorized, err))
 		return
 	}
-
-	//生成新的token
-	accessToken, accessTokenPayload, err := s.tokenMaker.CreateToken(payload.Username, s.config.AccessTokenDuration)
+	user, err := s.store.GetUserByUsername(c, req.UserName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
 		return
 	}
-
+	ok, err := s.redis.ValidateRefreshToken(user.ID, payload.DeviceID, req.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+		return
+	}
+	if !ok {
+		c.JSON(http.StatusUnauthorized, errorResponse(http.StatusUnauthorized, err))
+		return
+	}
+	//生成新的token
+	accessToken, accessTokenPayload, err := s.tokenMaker.CreateToken(payload.Username, payload.DeviceID, s.config.AccessTokenDuration)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+		return
+	}
+	err = s.redis.UpdateAccessToken(accessToken, user.ID, payload.DeviceID, payload.Username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+		return
+	}
 	//返回新的token
 	resp := RefreshTokenResponse{
 		AccessToken:          accessToken,

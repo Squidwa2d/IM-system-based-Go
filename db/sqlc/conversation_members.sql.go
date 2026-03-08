@@ -181,6 +181,31 @@ func (q *Queries) GetConversationMember(ctx context.Context, arg GetConversation
 	return i, err
 }
 
+const getUserAllConversations = `-- name: GetUserAllConversations :many
+SELECT conversation_id FROM conversation_members
+WHERE user_id = $1
+`
+
+func (q *Queries) GetUserAllConversations(ctx context.Context, userID int64) ([]int64, error) {
+	rows, err := q.db.Query(ctx, getUserAllConversations, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var conversation_id int64
+		if err := rows.Scan(&conversation_id); err != nil {
+			return nil, err
+		}
+		items = append(items, conversation_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listConversationMembers = `-- name: ListConversationMembers :many
 SELECT id, conversation_id, user_id, role, joined_at, last_read_message_id, last_active_at FROM conversation_members
 where conversation_id = $1

@@ -11,6 +11,7 @@ type Config struct {
 	ServerAddress        string        `mapstructure:"SERVER_ADDRESS"`
 	AccessTokenDuration  time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
 	RefreshTokenDuration time.Duration `mapstructure:"REFRESH_TOKEN_DURATION"`
+	RdbSource            string        `mapstructure:"RDB_SOURCE"`
 }
 
 // LoadConfig reads configuration from .env file

@@ -17,11 +17,12 @@ var (
 type Payload struct {
 	ID        pgtype.UUID        `json:"id"`
 	Username  string             `json:"username"`
+	DeviceID  string             `json:"device_id"`
 	IssuedAt  pgtype.Timestamptz `json:"issued_at"`
 	ExpiredAt pgtype.Timestamptz `json:"expired_at"`
 }
 
-func NewPayload(username string, duration time.Duration) (*Payload, error) {
+func NewPayload(username string, device string, duration time.Duration) (*Payload, error) {
 	tokenID, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
@@ -33,6 +34,7 @@ func NewPayload(username string, duration time.Duration) (*Payload, error) {
 			Valid: true,
 		},
 		Username: username,
+		DeviceID: device,
 		IssuedAt: pgtype.Timestamptz{
 			Time:  time.Now(),
 			Valid: true,

@@ -20,6 +20,25 @@ WHERE conversation_id = $1
 ORDER BY id DESC -- 必须配合索引 (conversation_id, id)
 LIMIT $3;
 
+-- name: ListHistoryMessages :many
+SELECT 
+    id,
+    conversation_id,
+    sender_id,
+    msg_type,
+    content,
+    created_at,
+    is_deleted
+FROM messages
+WHERE 
+    conversation_id = $1 
+    AND is_deleted = FALSE
+    -- 关键逻辑：如果提供了 cursor_id，只查比它小的 ID
+    -- sqlc.narg 允许参数为 NULL，实现可选过滤
+    AND (sqlc.narg('cursor_id')::bigint IS NULL OR id < sqlc.narg('cursor_id')::bigint)
+ORDER BY id DESC  -- 必须按 ID 倒序（或时间倒序），保证一致性
+LIMIT $2;         -- 只需要 Limit，不需要 Offset
+
 -- name: ListMessagesBySender :many
 SELECT * FROM messages
 WHERE conversation_id = $1 and sender_id = $2 and is_deleted = false

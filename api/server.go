@@ -8,6 +8,11 @@ import (
 	token "github.com/Squidwa2d/IM-system-based-Go/token"
 	"github.com/Squidwa2d/IM-system-based-Go/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
+	"log"
+	"net/http"
+	"time"
 )
 
 type Response struct {
@@ -22,15 +27,18 @@ type Server struct {
 	store      db.Store
 	tokenMaker token.Maker
 	router     *gin.Engine
+	redis      *RedisStore
 }
 
-func NewServer(config util.Config, store db.Store) (*Server, error) {
+func NewServer(config util.Config, store db.Store, rdb *RedisStore) (*Server, error) {
 	tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create token maker: %w", err)
 	}
 	r := gin.Default()
-
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		v.RegisterValidation("device", validDevice)
+	}
 	hub := NewHub()
 	server := &Server{
 		config:     config,
@@ -38,13 +46,33 @@ func NewServer(config util.Config, store db.Store) (*Server, error) {
 		tokenMaker: tokenMaker,
 		router:     r,
 		hub:        hub,
+		redis:      rdb,
 	}
 	server.setupRouter()
 	return server, nil
 }
 
-func (server *Server) Start(address string) error {
-	return server.router.Run(address)
+func (s *Server) StartHTTP(address string) *http.Server {
+	// 先启动 Hub，确保在接收请求前 Ready
+	go s.hub.Run()
+	log.Println("✅ Hub 已启动")
+
+	srv := &http.Server{
+		Addr:         address,
+		Handler:      s.router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// 在后台启动 HTTP 服务
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("❌ HTTP 服务启动失败: %v", err)
+		}
+	}()
+
+	return srv
 }
 
 func (server *Server) setupRouter() {
@@ -61,6 +89,11 @@ func (server *Server) setupRouter() {
 	authRoutes.POST("/conversations/createPrivate", server.createPrivateConversation)
 
 	authRoutes.GET("/ws/connect", server.handleWebSocket)
+}
+
+func (s *Server) StopHub() {
+	log.Println("🛑 正在关闭 Hub...")
+	s.hub.Stop() // 你需要在 hub.go 中实现这个方法来广播关闭信号并退出 Run 循环
 }
 
 func errorResponse(code int, err error) Response {
