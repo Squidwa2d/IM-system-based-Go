@@ -34,6 +34,7 @@ func (s *Server) updatePassword(c *gin.Context) {
 	if req.Username != authPayload.Username {
 		err := errors.New("account doesn't belong to the authenticated user")
 		c.JSON(http.StatusUnauthorized, errorResponse(http.StatusUnauthorized, err))
+		return
 	}
 
 	// check if the password is the same

@@ -80,6 +80,7 @@ func (s *Server) login(c *gin.Context) {
 	ok, key := s.redis.CheckRrefreshToken(user.ID, req.Device)
 	//如果存在，则更新token
 	if ok {
+		fmt.Printf("用户一个设备重复登录，删除旧设备\n")
 		s.redis.client.Del(s.redis.ctx, key)
 	}
 	key = fmt.Sprintf("%s%d%s", keyRefreshPrefix, user.ID, req.Device)

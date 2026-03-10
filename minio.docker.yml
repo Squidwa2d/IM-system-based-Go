@@ -1,0 +1,12 @@
+docker run -d \
+-p 9000:9000 \
+-p 9001:9001 \
+--name minio \
+--restart=always \
+-v /data/minio/data:/data \
+-v /data/minio/config:/root/.minio \
+-e "MINIO_ROOT_USER=admin" \
+-e "MINIO_ROOT_PASSWORD=admin123" \
+-e "MINIO_SERVER_URL=https://minio.wdnndw.cn" \
+-e "MINIO_BROWSER_REDIRECT_URL=https://console.minio.wdnndw.cn" \
+minio/minio server /data --console-address ":9001"

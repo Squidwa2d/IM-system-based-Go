@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"github.com/minio/minio-go/v7"
 	"log"
 	"net/http"
 	"time"
@@ -22,15 +23,16 @@ type Response struct {
 }
 
 type Server struct {
-	hub        *Hub
-	config     util.Config
-	store      db.Store
-	tokenMaker token.Maker
-	router     *gin.Engine
-	redis      *RedisStore
+	hub         *Hub
+	config      util.Config
+	store       db.Store
+	tokenMaker  token.Maker
+	router      *gin.Engine
+	redis       *RedisStore
+	MinIOClient *minio.Client
 }
 
-func NewServer(config util.Config, store db.Store, rdb *RedisStore) (*Server, error) {
+func NewServer(config util.Config, store db.Store, rdb *RedisStore, minioClient *minio.Client) (*Server, error) {
 	tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create token maker: %w", err)
@@ -41,12 +43,13 @@ func NewServer(config util.Config, store db.Store, rdb *RedisStore) (*Server, er
 	}
 	hub := NewHub()
 	server := &Server{
-		config:     config,
-		store:      store,
-		tokenMaker: tokenMaker,
-		router:     r,
-		hub:        hub,
-		redis:      rdb,
+		config:      config,
+		store:       store,
+		tokenMaker:  tokenMaker,
+		router:      r,
+		hub:         hub,
+		redis:       rdb,
+		MinIOClient: minioClient,
 	}
 	server.setupRouter()
 	return server, nil
@@ -88,6 +91,7 @@ func (server *Server) setupRouter() {
 	authRoutes.POST("/conversations/listConversations", server.listConversations)
 	authRoutes.POST("/conversations/createPrivate", server.createPrivateConversation)
 
+	authRoutes.POST("/messages/uploadFile", server.uploadFile)
 	authRoutes.GET("/ws/connect", server.handleWebSocket)
 }
 

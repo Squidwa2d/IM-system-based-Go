@@ -12,6 +12,11 @@ type Config struct {
 	AccessTokenDuration  time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
 	RefreshTokenDuration time.Duration `mapstructure:"REFRESH_TOKEN_DURATION"`
 	RdbSource            string        `mapstructure:"RDB_SOURCE"`
+	MinioBucketName      string        `mapstructure:"MINIO_BUCKET_NAME"`
+	MinioEndpoint        string        `mapstructure:"MINIO_ENDPOINT"`
+	MinioAccessKey       string        `mapstructure:"MINIO_ACCESS_KEY"`
+	MinioSecretKey       string        `mapstructure:"MINIO_SECRET_KEY"`
+	MinioUseSSL          bool          `mapstructure:"MINIO_USE_SSL"`
 }
 
 // LoadConfig reads configuration from .env file

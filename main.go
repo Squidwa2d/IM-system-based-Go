@@ -55,8 +55,12 @@ func main() {
 		DB:   0,                // 默认数据库
 	})
 	rdbStore := api.NewRedisStore(rdb)
+
+	//配置并初始化MinioClient
+
+	minioClient, err := api.NewMinioClient(config.MinioEndpoint, config.MinioAccessKey, config.MinioSecretKey, config.MinioUseSSL)
 	// 3. 初始化 Server
-	server, err := api.NewServer(config, store, rdbStore)
+	server, err := api.NewServer(config, store, rdbStore, minioClient)
 	if err != nil {
 		log.Fatal("❌ 无法创建服务器:", err)
 	}

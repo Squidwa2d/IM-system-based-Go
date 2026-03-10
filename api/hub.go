@@ -45,6 +45,15 @@ type MessageInput struct {
 	SenderID       int64  `json:"sender_id"`
 }
 
+/*
+{
+    "conversation_id":4,
+    "msg_type":1,
+    "content":"nihao",
+    "sender_id":2
+}
+*/
+
 type BroadcastMessage struct {
 	ConversationId int64              `json:"conversation_id"`
 	MsgType        int                `json:"msg_type"` //1:text, 2:image, 3:file, 4:voice
@@ -176,6 +185,11 @@ func (c *Client) handleMessage(msgBytes []byte) {
 
 		switch controlMsg.Action {
 		case "join_room":
+			if controlMsg.RoomID == 0 {
+				c.SendError("room_id is required")
+				c.Hub.mu.Unlock()
+				return
+			}
 			if _, ok := c.Hub.rooms[controlMsg.RoomID]; !ok {
 				c.Hub.rooms[controlMsg.RoomID] = make(map[*Client]bool)
 			}
@@ -207,6 +221,11 @@ func (c *Client) handleMessage(msgBytes []byte) {
 				fmt.Printf("✅ [JOIN] 用户 %d 加入房间 %d\n", c.UserID, controlMsg.RoomID)
 			}
 		case "leave_room":
+			if controlMsg.RoomID == 0 {
+				c.SendError("room_id is required")
+				c.Hub.mu.Unlock()
+				return
+			}
 			if _, ok := c.Hub.rooms[controlMsg.RoomID]; ok {
 				c.Hub.rooms[controlMsg.RoomID][c] = false
 			}

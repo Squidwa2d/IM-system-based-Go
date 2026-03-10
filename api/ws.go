@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	token "github.com/Squidwa2d/IM-system-based-Go/token"
-	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
-	"time"
+	"strings"
+
+	token "github.com/Squidwa2d/IM-system-based-Go/token"
+	"github.com/gin-gonic/gin"
 )
 
 func (s *Server) handleWebSocket(c *gin.Context) {
@@ -34,15 +35,18 @@ func (s *Server) handleWebSocket(c *gin.Context) {
 
 	// 3.获取 DeviceID
 	// 优先从 Query 参数获取，其次从 Header 获取
-	deviceID := c.Query("device_id")
+	deviceID := c.Query("device")
+
+	deviceID = strings.ToUpper(deviceID)
 	if deviceID == "" {
-		deviceID = c.GetHeader("X-Device-ID")
-	}
-	if deviceID == "" {
-		deviceID = "temp_" + time.Now().Format("20060102150405") + "_" + fmt.Sprintf("%d", time.Now().UnixNano())
-		log.Printf("⚠️ 用户 %s 未提供 device_id，使用临时ID: %s", user.Username, deviceID)
+		fmt.Printf("❌ 未提供 device_id 参数\n")
+		c.JSON(http.StatusBadRequest, errorResponse(http.StatusBadRequest, errors.New("device_id 参数缺失")))
 	}
 
+	if deviceID != "PC" && deviceID != "MOBILE" {
+		fmt.Printf("❌ device 参数无效\n")
+		c.JSON(http.StatusBadRequest, errorResponse(http.StatusBadRequest, errors.New("device_id 参数无效")))
+	}
 	// 4.获取该用户的所有会话ID
 	conversationIDs, err := s.store.GetUserAllConversations(c, userID)
 	if err != nil {
