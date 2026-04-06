@@ -82,16 +82,54 @@ func (server *Server) setupRouter() {
 	v1 := server.router.Group("/api/v1")
 	v1.POST("/auth/login", server.login)
 	v1.POST("/auth/register", server.register)
-	v1.GET("auth/refresh", server.refreshToken)
+	v1.GET("/auth/refresh", server.refreshToken)
 
 	authRoutes := v1.Use(AuthMiddleware(server.tokenMaker))
+
+	// 用户模块
 	authRoutes.POST("/users/passwd", server.updatePassword)
 
+	// 用户资料模块
+	authRoutes.GET("/users/detail", server.getUserDetail)
+	authRoutes.POST("/users/profile", server.updateUserProfile)
+	authRoutes.POST("/users/avatar", server.updateUserAvatar)
+
+	// 好友模块
+	authRoutes.POST("/users/search", server.searchUsers)
+	authRoutes.GET("/friends/requests", server.getFriendRequestList)
+	authRoutes.GET("/friends/requests/count", server.getFriendRequestCount)
+	authRoutes.POST("/friends/add", server.addFriend)
+	authRoutes.POST("/friends/accept", server.acceptFriendRequest)
+	authRoutes.POST("/friends/reject", server.rejectFriendRequest)
+	authRoutes.POST("/friends/delete", server.deleteFriend)
+	authRoutes.POST("/friends/list", server.getFriendList)
+	authRoutes.POST("/friends/block", server.blockFriend)
+	authRoutes.POST("/friends/unblock", server.unblockFriend)
+
+	// 会话模块
 	authRoutes.POST("/conversations/createGroupe", server.createGroupeConversation)
 	authRoutes.POST("/conversations/listConversations", server.listConversations)
 	authRoutes.POST("/conversations/createPrivate", server.createPrivateConversation)
+	authRoutes.POST("/conversations/members", server.getConversationMembers)
 
+	// 群组管理模块
+	authRoutes.POST("/groups/invite", server.inviteGroupMember)
+	authRoutes.POST("/groups/kick", server.kickGroupMember)
+	authRoutes.POST("/groups/leave", server.leaveGroup)
+	authRoutes.POST("/groups/update-info", server.updateGroupInfo)
+	authRoutes.POST("/groups/transfer", server.transferGroupOwner)
+	authRoutes.POST("/groups/announcement", server.updateGroupAnnouncement)
+	authRoutes.POST("/groups/get-announcement", server.getGroupAnnouncement)
+	authRoutes.POST("/groups/mute", server.muteGroupMember)
+	authRoutes.POST("/groups/unmute", server.unmuteGroupMember)
+
+	// 消息模块
 	authRoutes.POST("/messages/uploadFile", server.uploadFile)
+	authRoutes.POST("/messages/forward", server.forwardMessage)
+	authRoutes.POST("/messages/forward-batch", server.forwardMultipleMessages)
+	authRoutes.POST("/messages/recall", server.recallMessage)
+
+	// WebSocket 连接
 	authRoutes.GET("/ws/connect", server.handleWebSocket)
 }
 

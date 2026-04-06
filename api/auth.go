@@ -26,20 +26,27 @@ type LoginRequest struct {
 }
 
 type userResponse struct {
-	Username  string
-	CreatedAt pgtype.Timestamptz
-	AvatarUrl pgtype.Text
-	// online, offline, busy
-	Status    string
-	UpdatedAt pgtype.Timestamptz
+	ID        int                `json:"id"`
+	Username  string             `json:"username"`
+	AvatarUrl string             `json:"avatar_url"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 func newUserResponse(user db.User) userResponse {
+	var avatarUrl string
+	if user.AvatarUrl.Valid {
+		avatarUrl = user.AvatarUrl.String
+	} else {
+		avatarUrl = ""
+	}
 	return userResponse{
+		ID:        int(user.ID),
 		Username:  user.Username,
-		CreatedAt: user.CreatedAt,
-		AvatarUrl: user.AvatarUrl,
+		AvatarUrl: avatarUrl,
 		Status:    user.Status,
+		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	}
 }
@@ -47,8 +54,8 @@ func newUserResponse(user db.User) userResponse {
 type loginResponse struct {
 	AccessToken           string       `json:"access_token"`
 	RefreshToken          string       `json:"refresh_token"`
-	RefreshTokenExpiresAt time.Time    `json:"refresh_token_expires_at"`
 	AccessTokenExpiresAt  time.Time    `json:"access_token_expires_at"`
+	RefreshTokenExpiresAt time.Time    `json:"refresh_token_expires_at"`
 	User                  userResponse `json:"user"`
 }
 
@@ -164,11 +171,11 @@ func (s *Server) register(c *gin.Context) {
 		if errors.As(err, &pgErr) {
 			// 23505 是 PostgreSQL 的 "unique_violation"
 			if pgErr.Code == "23505" {
-				c.JSON(http.StatusConflict, gin.H{"error": "username already exists"})
+				c.JSON(http.StatusConflict, errorResponse(http.StatusConflict, errors.New("username already exists")))
 				return
 			}
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, errors.New("database error")))
 		return
 	}
 
@@ -191,8 +198,8 @@ Refresh Token API
 */
 
 type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-	UserName     string `json:"username" binding:"required"`
+	RefreshToken string `json:"refresh_token" binding:"required" form:"refresh_token"`
+	UserName     string `json:"username" binding:"required" form:"username"`
 }
 
 type RefreshTokenResponse struct {
@@ -202,12 +209,16 @@ type RefreshTokenResponse struct {
 
 func (s *Server) refreshToken(c *gin.Context) {
 	var req RefreshTokenRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errorResponse(http.StatusBadRequest, err))
-		return
+	// 先尝试从 query 参数获取，如果失败则尝试 JSON body
+	if err := c.ShouldBindQuery(&req); err != nil || req.RefreshToken == "" || req.UserName == "" {
+		// 如果 query 参数不完整，尝试 JSON body
+		if err2 := c.ShouldBindJSON(&req); err2 != nil {
+			c.JSON(http.StatusBadRequest, errorResponse(http.StatusBadRequest, err2))
+			return
+		}
 	}
 
-	//验证token
+	//验证 token
 	payload, err := s.tokenMaker.VerifyToken(req.RefreshToken)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, errorResponse(http.StatusUnauthorized, err))
@@ -224,6 +235,18 @@ func (s *Server) refreshToken(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
 		return
 	}
+
+	// 检查 token 是否已被使用过
+	isUsed, err := s.redis.IsRefreshTokenUsed(user.ID, payload.DeviceID, req.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, errorResponse(http.StatusUnauthorized, errors.New("refresh token has been used or is invalid")))
+		return
+	}
+	if isUsed {
+		c.JSON(http.StatusUnauthorized, errorResponse(http.StatusUnauthorized, errors.New("refresh token has been used")))
+		return
+	}
+
 	ok, err := s.redis.ValidateRefreshToken(user.ID, payload.DeviceID, req.RefreshToken)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
@@ -233,7 +256,15 @@ func (s *Server) refreshToken(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, errorResponse(http.StatusUnauthorized, err))
 		return
 	}
-	//生成新的token
+
+	// 标记 refresh token 为已使用
+	err = s.redis.MarkRefreshTokenUsed(user.ID, payload.DeviceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+		return
+	}
+
+	//生成新的 token
 	accessToken, accessTokenPayload, err := s.tokenMaker.CreateToken(payload.Username, payload.DeviceID, s.config.AccessTokenDuration)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
@@ -244,7 +275,7 @@ func (s *Server) refreshToken(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
 		return
 	}
-	//返回新的token
+	//返回新的 token
 	resp := RefreshTokenResponse{
 		AccessToken:          accessToken,
 		AccessTokenExpiresAt: accessTokenPayload.ExpiredAt.Time,
@@ -252,7 +283,7 @@ func (s *Server) refreshToken(c *gin.Context) {
 
 	c.JSON(http.StatusOK, Response{
 		Code:    http.StatusOK,
-		Message: "Succsessfully refreshed token",
+		Message: "Successfully refreshed token",
 		Data:    resp,
 	})
 

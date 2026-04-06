@@ -8,6 +8,7 @@ import (
 	db "github.com/Squidwa2d/IM-system-based-Go/db/sqlc"
 	token "github.com/Squidwa2d/IM-system-based-Go/token"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 /*
@@ -20,8 +21,18 @@ type listConversationsRequest struct {
 	UserName string `json:"username" binding:"required"`
 }
 
+type ConversationResponse struct {
+	ID        int64              `json:"id"`
+	Type      int16              `json:"type"`
+	Name      interface{}        `json:"name"`
+	AvatarUrl interface{}        `json:"avatar_url"`
+	OwnerID   interface{}        `json:"owner_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type listConversationsResponse struct {
-	Conversations []db.Conversation `json:"conversations"`
+	Conversations []ConversationResponse `json:"conversations"`
 }
 
 func (server *Server) listConversations(c *gin.Context) {
@@ -42,8 +53,36 @@ func (server *Server) listConversations(c *gin.Context) {
 		return
 	}
 	conversations, err := server.store.ListMyConversations(c, user.ID)
+
+	// 转换 conversation 数据格式
+	var convResponses []ConversationResponse
+	for _, conv := range conversations {
+		resp := ConversationResponse{
+			ID:        conv.ID,
+			Type:      conv.Type,
+			Name:      nil,
+			AvatarUrl: nil,
+			OwnerID:   nil,
+			CreatedAt: conv.CreatedAt,
+			UpdatedAt: conv.UpdatedAt,
+		}
+
+		// 处理可选字段
+		if conv.Name.Valid {
+			resp.Name = conv.Name.String
+		}
+		if conv.AvatarUrl.Valid {
+			resp.AvatarUrl = conv.AvatarUrl.String
+		}
+		if conv.OwnerID.Valid {
+			resp.OwnerID = conv.OwnerID.Int64
+		}
+
+		convResponses = append(convResponses, resp)
+	}
+
 	resq := listConversationsResponse{
-		Conversations: conversations,
+		Conversations: convResponses,
 	}
 	c.JSON(http.StatusOK, Response{
 		Code:    http.StatusOK,
@@ -53,7 +92,58 @@ func (server *Server) listConversations(c *gin.Context) {
 }
 
 /*
-createConversation Api
+Get Conversation Members Api
+*/
+
+type GetConversationMembersRequest struct {
+	ConversationID int64 `json:"conversation_id" binding:"required"`
+}
+
+func (server *Server) getConversationMembers(c *gin.Context) {
+	authPayload := c.MustGet(authorizationPayloadKey).(*token.Payload)
+	var req GetConversationMembersRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, errorResponse(http.StatusBadRequest, err))
+		return
+	}
+
+	user, err := server.store.GetUserByUsername(c, authPayload.Username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+		return
+	}
+
+	// 检查用户是否为群成员
+	isMember, err := server.store.CheckMemberExists(c, db.CheckMemberExistsParams{
+		ConversationID: req.ConversationID,
+		UserID:         user.ID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+		return
+	}
+	if !isMember {
+		c.JSON(http.StatusForbidden, errorResponse(http.StatusForbidden, errors.New("you are not a member of this conversation")))
+		return
+	}
+
+	members, err := server.store.ListConversationMembers(c, req.ConversationID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+		return
+	}
+
+	c.JSON(http.StatusOK, Response{
+		Code:    http.StatusOK,
+		Message: "Successfully get conversation members",
+		Data:    members,
+	})
+}
+
+/*
+create private conversation Api
+重构：增加好友关系验证，只有好友间才能创建私聊
+
 */
 
 type createGroupeConversationRequest struct {
@@ -119,6 +209,7 @@ func (server *Server) createGroupeConversation(c *gin.Context) {
 /*
 
 create private conversation Api
+重构：增加好友关系验证，只有好友间才能创建私聊
 
 */
 
@@ -149,6 +240,7 @@ func (server *Server) createPrivateConversation(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+		return
 	}
 
 	//check if the target user exist
@@ -159,8 +251,39 @@ func (server *Server) createPrivateConversation(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+		return
 	}
 
+	// 验证好友关系：只有好友才能创建私聊会话
+	isFriend, err := server.store.CheckFriendshipExists(c, db.CheckFriendshipExistsParams{
+		UserID:   user.ID,
+		FriendID: target.ID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))
+		return
+	}
+	if !isFriend {
+		c.JSON(http.StatusForbidden, errorResponse(http.StatusForbidden, errors.New("can only create private conversation with friends")))
+		return
+	}
+
+	// 检查是否已存在私聊会话
+	existingConv, err := server.store.GetPrivateConversation(c, db.GetPrivateConversationParams{
+		UserID:   user.ID,
+		UserID_2: target.ID,
+	})
+	if err == nil {
+		// 如果已存在，直接返回
+		c.JSON(http.StatusOK, Response{
+			Code:    http.StatusOK,
+			Message: "Private conversation already exists",
+			Data:    existingConv,
+		})
+		return
+	}
+
+	// 创建私聊会话
 	cm, err := server.store.CreatePrivateTx(c, &db.CreatePrivateTxParams{UserId: user.ID, FriendId: target.ID})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errorResponse(http.StatusInternalServerError, err))

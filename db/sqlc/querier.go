@@ -9,35 +9,67 @@ import (
 )
 
 type Querier interface {
+	AcceptFriendship(ctx context.Context, arg AcceptFriendshipParams) error
 	BatchCreateMembers(ctx context.Context, arg BatchCreateMembersParams) ([]ConversationMember, error)
+	BlockFriend(ctx context.Context, arg BlockFriendParams) error
+	CheckFriendshipExists(ctx context.Context, arg CheckFriendshipExistsParams) (bool, error)
+	CheckGroupMuted(ctx context.Context, arg CheckGroupMutedParams) (bool, error)
 	CheckMemberExists(ctx context.Context, arg CheckMemberExistsParams) (bool, error)
 	CountConversationMembers(ctx context.Context, conversationID int64) (int64, error)
 	CountUnreadMessages(ctx context.Context, arg CountUnreadMessagesParams) (int64, error)
 	CreateConversation(ctx context.Context, arg CreateConversationParams) (Conversation, error)
 	CreateConversationMember(ctx context.Context, arg CreateConversationMemberParams) (ConversationMember, error)
+	CreateFriendship(ctx context.Context, arg CreateFriendshipParams) (Friendship, error)
+	CreateGroupAnnouncement(ctx context.Context, arg CreateGroupAnnouncementParams) (GroupAnnouncement, error)
 	CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error)
+	CreateMessageForward(ctx context.Context, arg CreateMessageForwardParams) (MessageForward, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteFriendship(ctx context.Context, arg DeleteFriendshipParams) error
 	DeleteMessage(ctx context.Context, id int64) (Message, error)
 	GetConversation(ctx context.Context, id int64) (Conversation, error)
 	GetConversationForUpdate(ctx context.Context, id int64) (Conversation, error)
 	GetConversationMember(ctx context.Context, arg GetConversationMemberParams) (ConversationMember, error)
+	GetFriendList(ctx context.Context, arg GetFriendListParams) ([]GetFriendListRow, error)
+	GetFriendRequestList(ctx context.Context, friendID int64) ([]GetFriendRequestListRow, error)
+	GetFriendship(ctx context.Context, arg GetFriendshipParams) (Friendship, error)
+	GetFriendshipBidirectional(ctx context.Context, arg GetFriendshipBidirectionalParams) (Friendship, error)
+	GetGroupAnnouncement(ctx context.Context, conversationID int64) (GroupAnnouncement, error)
+	GetGroupMuteInfo(ctx context.Context, arg GetGroupMuteInfoParams) (GroupMute, error)
 	GetMessage(ctx context.Context, id int64) (Message, error)
+	GetMessageForwards(ctx context.Context, arg GetMessageForwardsParams) ([]GetMessageForwardsRow, error)
+	GetPrivateConversation(ctx context.Context, arg GetPrivateConversationParams) (Conversation, error)
 	GetUserAllConversations(ctx context.Context, userID int64) ([]int64, error)
 	GetUserById(ctx context.Context, id int64) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
+	GetUserDetail(ctx context.Context, id int64) (GetUserDetailRow, error)
+	InviteGroupMember(ctx context.Context, arg InviteGroupMemberParams) (ConversationMember, error)
+	KickGroupMember(ctx context.Context, arg KickGroupMemberParams) error
+	LeaveGroup(ctx context.Context, arg LeaveGroupParams) error
 	ListConversationMembers(ctx context.Context, conversationID int64) ([]ConversationMember, error)
 	ListHistoryMessages(ctx context.Context, arg ListHistoryMessagesParams) ([]Message, error)
 	ListMessages(ctx context.Context, arg ListMessagesParams) ([]Message, error)
 	// 只需要 Limit，不需要 Offset
 	ListMessagesBySender(ctx context.Context, arg ListMessagesBySenderParams) ([]Message, error)
 	ListMyConversations(ctx context.Context, userID int64) ([]Conversation, error)
+	MuteGroupMember(ctx context.Context, arg MuteGroupMemberParams) (GroupMute, error)
 	RecallMessage(ctx context.Context, arg RecallMessageParams) (Message, error)
+	RejectFriendship(ctx context.Context, arg RejectFriendshipParams) error
 	RemoveConversationMember(ctx context.Context, arg RemoveConversationMemberParams) error
+	SearchUsers(ctx context.Context, arg SearchUsersParams) ([]SearchUsersRow, error)
+	SearchUsersCount(ctx context.Context, username string) (int64, error)
+	TransferGroupOwner(ctx context.Context, arg TransferGroupOwnerParams) error
+	UnblockFriend(ctx context.Context, arg UnblockFriendParams) error
+	UnmuteGroupMember(ctx context.Context, arg UnmuteGroupMemberParams) error
 	UpdataStatus(ctx context.Context, arg UpdataStatusParams) (User, error)
 	UpdateAvatar(ctx context.Context, arg UpdateAvatarParams) (User, error)
+	UpdateFriendRemark(ctx context.Context, arg UpdateFriendRemarkParams) error
+	UpdateGroupAnnouncement(ctx context.Context, arg UpdateGroupAnnouncementParams) (GroupAnnouncement, error)
+	UpdateGroupInfo(ctx context.Context, arg UpdateGroupInfoParams) (Conversation, error)
 	UpdateMemberRole(ctx context.Context, arg UpdateMemberRoleParams) error
 	UpdatePasswd(ctx context.Context, arg UpdatePasswdParams) (User, error)
 	UpdateReadStatus(ctx context.Context, arg UpdateReadStatusParams) error
+	UpdateUserInfo(ctx context.Context, arg UpdateUserInfoParams) (User, error)
+	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UserProfile, error)
 	UpdateUsername(ctx context.Context, arg UpdateUsernameParams) (User, error)
 }
 

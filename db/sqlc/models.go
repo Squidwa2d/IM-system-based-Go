@@ -31,6 +31,36 @@ type ConversationMember struct {
 	LastActiveAt      pgtype.Timestamptz
 }
 
+type Friendship struct {
+	ID       int64
+	UserID   int64
+	FriendID int64
+	// pending: 待处理，accepted: 已接受，rejected: 已拒绝
+	Status    string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	Blocked   pgtype.Bool
+	// 好友备注名
+	Remark pgtype.Text
+}
+
+type GroupAnnouncement struct {
+	ID             int64
+	ConversationID int64
+	PublisherID    int64
+	Content        string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type GroupMute struct {
+	ID             int64
+	ConversationID int64
+	UserID         int64
+	MutedUntil     pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+}
+
 type Message struct {
 	ID             int64
 	ConversationID int64
@@ -42,6 +72,14 @@ type Message struct {
 	IsDeleted pgtype.Bool
 }
 
+type MessageForward struct {
+	ID                   int64
+	OriginalMessageID    int64
+	ForwardedBy          int64
+	TargetConversationID int64
+	ForwardedAt          pgtype.Timestamptz
+}
+
 type User struct {
 	ID         int64
 	Username   string
@@ -49,6 +87,16 @@ type User struct {
 	AvatarUrl  pgtype.Text
 	// online, offline, busy
 	Status    string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type UserProfile struct {
+	UserID    int64
+	Nickname  pgtype.Text
+	Signature pgtype.Text
+	Gender    pgtype.Text
+	Birthday  pgtype.Date
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }

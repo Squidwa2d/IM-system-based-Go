@@ -133,6 +133,36 @@ func (s *RedisStore) ValidateRefreshToken(userID int64, deviceID, refreshToken s
 	return true, nil
 }
 
+func (s *RedisStore) MarkRefreshTokenUsed(userID int64, deviceID string) error {
+	refreshKey := fmt.Sprintf("%s%d%s", keyRefreshPrefix, userID, deviceID)
+	usedKey := fmt.Sprintf("used_refresh_token:%d%s", userID, deviceID)
+
+	ttl, err := s.client.TTL(s.ctx, refreshKey).Result()
+	if err != nil {
+		return err
+	}
+
+	if err := s.client.Set(s.ctx, usedKey, "1", ttl).Err(); err != nil {
+		return err
+	}
+
+	return s.client.Del(s.ctx, refreshKey).Err()
+}
+
+func (s *RedisStore) IsRefreshTokenUsed(userID int64, deviceID string, originalRefreshToken string) (bool, error) {
+	usedKey := fmt.Sprintf("used_refresh_token:%d%s", userID, deviceID)
+
+	_, err := s.client.Get(s.ctx, usedKey).Result()
+	if err == redis.Nil {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return true, errors.New("refresh token has been used")
+}
+
 func (s *RedisStore) CheckRrefreshToken(userID int64, deviceID string) (bool, string) {
 	refreshKey := fmt.Sprintf("%s%d%s", keyRefreshPrefix, userID, deviceID)
 
